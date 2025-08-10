@@ -1,2 +1,2 @@
-# Build-your-own-Redis
+# Build your own Redis
 A minimal Redis built in Python

@@ -1,4 +1,4 @@
-
+import time
 
 def parse_resp(raw: str):
     """
@@ -19,3 +19,7 @@ def parse_resp(raw: str):
     
     return args.pop(0), args
 
+
+def current_time():
+    # milliseconds
+    return time.time() * 1000

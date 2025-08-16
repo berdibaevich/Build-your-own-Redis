@@ -23,3 +23,11 @@ def parse_resp(raw: str):
 def current_time():
     # milliseconds
     return time.time() * 1000
+
+
+def encode_array(items: list[str]) -> bytes:
+    resp = f"*{len(items)}\r\n"
+    for item in items:
+        resp += f"${len(item)}\r\n{item}\r\n"
+    return resp.encode()
+

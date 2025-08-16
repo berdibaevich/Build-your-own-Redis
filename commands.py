@@ -1,5 +1,5 @@
 from storage import KEY_VALUE, EXPIRY, LIST
-from utils import current_time
+from utils import current_time, encode_array
 
 def cmd_ping(_) -> bytes:
     return b"+PONG\r\n"
@@ -60,12 +60,31 @@ def cmd_rpush(args: list[str]) -> bytes:
     return f":{len(LIST[key])}\r\n".encode()
 
 
+def cmd_lrange(args: list[str]) -> bytes:
+    if len(args) != 3:
+        return b"-ERR wrong number of arguments for 'lrange' command\r\n" 
+
+    key = args.pop(0)
+    if not key in LIST:
+        return b"*0\r\n"
+    
+    try:
+        start = int(args[0])
+        end = int(args[-1]) if int(args[-1]) <= len(LIST[key]) else len(LIST[key])
+        items = LIST[key][start:end+1]
+    except:
+        return b"-ERR value is not an integer or out of range\r\n"
+    
+    return encode_array(items)
+
+
 COMMANDS = {
     "PING": cmd_ping,
     "ECHO": cmd_echo,
     "SET": cmd_set,
     "GET": cmd_get,
-    "RPUSH": cmd_rpush
+    "RPUSH": cmd_rpush,
+    "LRANGE": cmd_lrange
 }
 
 def handle_command(command: str, args):

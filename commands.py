@@ -1,4 +1,4 @@
-from storage import KEY_VALUE, EXPIRY
+from storage import KEY_VALUE, EXPIRY, LIST
 from utils import current_time
 
 def cmd_ping(_) -> bytes:
@@ -48,12 +48,24 @@ def cmd_get(args: list[str]) -> bytes:
     return b"$-1\r\n"
 
 
+def cmd_rpush(args: list[str]) -> bytes:
+    if len(args) == 1:
+        return b"-ERR wrong number of arguments for 'rpush' command\r\n"
+    
+    key = args.pop(0)
+    if not key in LIST:
+        LIST[key] = []
+
+    LIST[key].extend(args)
+    return f":{len(LIST[key])}\r\n".encode()
+
 
 COMMANDS = {
     "PING": cmd_ping,
     "ECHO": cmd_echo,
     "SET": cmd_set,
-    "GET": cmd_get
+    "GET": cmd_get,
+    "RPUSH": cmd_rpush
 }
 
 def handle_command(command: str, args):

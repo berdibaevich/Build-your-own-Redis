@@ -96,6 +96,13 @@ def cmd_lpush(args: list[str]) -> bytes:
     return f":{len(LIST[key])}\r\n".encode()
 
 
+def cmd_llen(args: list[str]) -> bytes:
+    if len(args) != 1:
+        return b"-ERR wrong number of arguments for 'llen' command\r\n"
+    
+    return f":{len(LIST.get(args[0], []))}\r\n".encode()
+
+
 COMMANDS = {
     "PING": cmd_ping,
     "ECHO": cmd_echo,
@@ -103,8 +110,10 @@ COMMANDS = {
     "GET": cmd_get,
     "RPUSH": cmd_rpush,
     "LRANGE": cmd_lrange,
-    "LPUSH": cmd_lpush
+    "LPUSH": cmd_lpush,
+    "LLEN": cmd_llen
 }
+
 
 def handle_command(command: str, args):
     func = COMMANDS.get(command.upper())

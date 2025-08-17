@@ -70,8 +70,12 @@ def cmd_lrange(args: list[str]) -> bytes:
     
     try:
         start = int(args[0])
-        end = int(args[-1]) if int(args[-1]) <= len(LIST[key]) else len(LIST[key])
-        items = LIST[key][start:end+1]
+        stop = int(args[-1])
+        if stop >= 0:
+            end = stop if stop <= len(LIST[key]) else len(LIST[key])
+            items = LIST[key][start:end+1]
+        else:
+            items = LIST[key][start:stop+1] if stop != -1 else LIST[key][start:]
     except:
         return b"-ERR value is not an integer or out of range\r\n"
     

@@ -82,13 +82,28 @@ def cmd_lrange(args: list[str]) -> bytes:
     return encode_array(items)
 
 
+def cmd_lpush(args: list[str]) -> bytes:
+    if len(args) == 1:
+        return b"-ERR wrong number of arguments for 'lpush' command\r\n"
+    
+    key = args.pop(0)
+    if not key in LIST:
+        LIST[key] = []
+
+    for arg in args:
+        LIST[key].insert(0, arg)
+    
+    return f":{len(LIST[key])}\r\n".encode()
+
+
 COMMANDS = {
     "PING": cmd_ping,
     "ECHO": cmd_echo,
     "SET": cmd_set,
     "GET": cmd_get,
     "RPUSH": cmd_rpush,
-    "LRANGE": cmd_lrange
+    "LRANGE": cmd_lrange,
+    "LPUSH": cmd_lpush
 }
 
 def handle_command(command: str, args):

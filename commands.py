@@ -103,6 +103,18 @@ def cmd_llen(args: list[str]) -> bytes:
     return f":{len(LIST.get(args[0], []))}\r\n".encode()
 
 
+def cmd_lpop(args: list[str]) -> bytes:
+    if len(args) != 1:
+        return b"-ERR wrong number of arguments for 'lpop' command\r\n"
+    
+    if not args[0] in LIST or not LIST[args[0]]:
+        return b"$-1\r\n"
+    
+    v = LIST[args[0]].pop(0)
+    return f"${len(v)}\r\n{v}\r\n".encode()
+
+
+
 COMMANDS = {
     "PING": cmd_ping,
     "ECHO": cmd_echo,
@@ -111,7 +123,8 @@ COMMANDS = {
     "RPUSH": cmd_rpush,
     "LRANGE": cmd_lrange,
     "LPUSH": cmd_lpush,
-    "LLEN": cmd_llen
+    "LLEN": cmd_llen,
+    "LPOP": cmd_lpop
 }
 
 

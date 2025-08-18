@@ -53,7 +53,7 @@ def cmd_rpush(args: list[str]) -> bytes:
         return b"-ERR wrong number of arguments for 'rpush' command\r\n"
     
     key = args.pop(0)
-    if not key in LIST:
+    if key not in LIST:
         LIST[key] = []
 
     LIST[key].extend(args)
@@ -65,7 +65,7 @@ def cmd_lrange(args: list[str]) -> bytes:
         return b"-ERR wrong number of arguments for 'lrange' command\r\n" 
 
     key = args.pop(0)
-    if not key in LIST:
+    if key not in LIST:
         return b"*0\r\n"
     
     try:
@@ -87,7 +87,7 @@ def cmd_lpush(args: list[str]) -> bytes:
         return b"-ERR wrong number of arguments for 'lpush' command\r\n"
     
     key = args.pop(0)
-    if not key in LIST:
+    if key not in LIST:
         LIST[key] = []
 
     for arg in args:
@@ -104,14 +104,26 @@ def cmd_llen(args: list[str]) -> bytes:
 
 
 def cmd_lpop(args: list[str]) -> bytes:
-    if len(args) != 1:
+    if len(args) == 0 or len(args) > 2:
         return b"-ERR wrong number of arguments for 'lpop' command\r\n"
-    
-    if not args[0] in LIST or not LIST[args[0]]:
+
+    key = args.pop(0)
+    if key not in LIST or not LIST[key]:
         return b"$-1\r\n"
+
+    how_many = len(args) # how many elements
+    try:
+        i = 0 if how_many == 0 else int(args[0])
+        which = min(i, len(LIST[key])) if i > 0 else 0 
+        
+        items = [LIST[key].pop(0) for _ in range(1 if which == 0 else which)]
+    except ValueError:
+        return b"-ERR value is out of range, must be positive\r\n"
     
-    v = LIST[args[0]].pop(0)
-    return f"${len(v)}\r\n{v}\r\n".encode()
+    if len(items) > 1:
+        return encode_array(items=items)
+
+    return f"${len(items[0])}\r\n{items[0]}\r\n".encode()
 
 
 
@@ -128,7 +140,7 @@ COMMANDS = {
 }
 
 
-def handle_command(command: str, args):
+def handle_command(command: str, args) -> bytes:
     func = COMMANDS.get(command.upper())
     if func:
         return func(args)

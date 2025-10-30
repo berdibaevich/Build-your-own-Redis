@@ -23,3 +23,8 @@ def redis_server():
     while True:
         client, _ = server_socket.accept()
         Thread(target=handle_client, args=(client, )).start()
+
+
+
+if __name__ == "__main__":
+    redis_server()

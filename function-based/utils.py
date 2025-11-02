@@ -31,7 +31,3 @@ def encode_array(items: list[str]) -> bytes:
         resp += f"${len(item)}\r\n{item}\r\n"
     return resp.encode()
 
-
-def blocking_retrieval(time_out: int, key: str, storage: dict) -> bytes:
-    while True:
-        pass

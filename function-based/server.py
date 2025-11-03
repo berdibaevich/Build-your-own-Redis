@@ -6,6 +6,7 @@ from manager import (
     _add_client,
     _remove_client
 )
+from constants import RedisResponse
 
 
 def handle_client(client: socket):
@@ -18,8 +19,11 @@ def handle_client(client: socket):
 
         data = req.decode()
         command, args = parse_resp(data)
-        response = handle_command(command, args)
-
+        response = handle_command(client_socket=client, command=command, args=args)
+        
+        if isinstance(response, RedisResponse):
+            continue
+        
         client.sendall(response)
 
 

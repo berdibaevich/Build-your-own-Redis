@@ -1,16 +1,31 @@
+from socket import socket
 from storage import KEY_VALUE, EXPIRY, LIST
 from utils import current_time, encode_array
+from decorators import does_not_require_client, requires_client
+from manager import (
+    _block_client, 
+    _get_client_id, 
+    _check_blocked_client,
+    ACTIVE_CLIENTS, BLOCKED_CLIENTS
+)
+from constants import BLOCKED, RedisResponse
 
+
+@does_not_require_client
 def cmd_ping(_) -> bytes:
+    print("ACTIVE_CLIENTS: ", ACTIVE_CLIENTS)
+    print("BLOCKED_CLIENTS: ", BLOCKED_CLIENTS)
     return b"+PONG\r\n"
 
 
+@does_not_require_client
 def cmd_echo(args: list[str]) -> bytes:
     if not args or len(args) != 1:
         return b"-ERR wrong number of arguments for 'echo' command\r\n"
     return f"${len(args[0])}\r\n{args[0]}\r\n".encode()
 
 
+@does_not_require_client
 def cmd_set(args: list[str]) -> bytes:
     _len = len(args)
     if _len not in (2, 4):
@@ -29,6 +44,7 @@ def cmd_set(args: list[str]) -> bytes:
     return b"+OK\r\n"
     
 
+@does_not_require_client
 def cmd_get(args: list[str]) -> bytes:
     """
         https://redis.io/docs/latest/develop/reference/protocol-spec/#null-bulk-strings
@@ -48,6 +64,7 @@ def cmd_get(args: list[str]) -> bytes:
     return b"$-1\r\n"
 
 
+@does_not_require_client
 def cmd_rpush(args: list[str]) -> bytes:
     if len(args) == 1:
         return b"-ERR wrong number of arguments for 'rpush' command\r\n"
@@ -57,9 +74,14 @@ def cmd_rpush(args: list[str]) -> bytes:
         LIST[key] = []
 
     LIST[key].extend(args)
+
+    # If someone waiting for that "key" we need to unblocking...
+    _check_blocked_client(key)
+
     return f":{len(LIST[key])}\r\n".encode()
 
 
+@does_not_require_client
 def cmd_lrange(args: list[str]) -> bytes:
     if len(args) != 3:
         return b"-ERR wrong number of arguments for 'lrange' command\r\n" 
@@ -82,6 +104,7 @@ def cmd_lrange(args: list[str]) -> bytes:
     return encode_array(items)
 
 
+@does_not_require_client
 def cmd_lpush(args: list[str]) -> bytes:
     if len(args) == 1:
         return b"-ERR wrong number of arguments for 'lpush' command\r\n"
@@ -92,10 +115,14 @@ def cmd_lpush(args: list[str]) -> bytes:
 
     for arg in args:
         LIST[key].insert(0, arg)
-    
+
+    # If someone waiting for that "key" we need to unblocking...
+    _check_blocked_client(key)
+
     return f":{len(LIST[key])}\r\n".encode()
 
 
+@does_not_require_client
 def cmd_llen(args: list[str]) -> bytes:
     if len(args) != 1:
         return b"-ERR wrong number of arguments for 'llen' command\r\n"
@@ -103,6 +130,7 @@ def cmd_llen(args: list[str]) -> bytes:
     return f":{len(LIST.get(args[0], []))}\r\n".encode()
 
 
+@does_not_require_client
 def cmd_lpop(args: list[str]) -> bytes:
     if len(args) == 0 or len(args) > 2:
         return b"-ERR wrong number of arguments for 'lpop' command\r\n"
@@ -126,6 +154,25 @@ def cmd_lpop(args: list[str]) -> bytes:
     return f"${len(items[0])}\r\n{items[0]}\r\n".encode()
 
 
+@requires_client
+def cmd_blpop(client: socket, args: list[str]):
+    if not args or len(args) < 2:
+        return b"-ERR wrong number of arguments for 'blpop' command\r\n"
+    
+    timeout_str = args.pop()
+    try:
+        timeout = float(timeout_str)
+    except ValueError:
+        return b"-ERR timeout is not a float or out of range\r\n"
+
+    key = args[0]
+
+    if key not in LIST and timeout == 0.0:
+        _id = _get_client_id(client)
+        _block_client(key, timeout, _id)
+        return BLOCKED
+    
+
 
 COMMANDS = {
     "PING": cmd_ping,
@@ -136,13 +183,14 @@ COMMANDS = {
     "LRANGE": cmd_lrange,
     "LPUSH": cmd_lpush,
     "LLEN": cmd_llen,
-    "LPOP": cmd_lpop
+    "LPOP": cmd_lpop,
+    "BLPOP": cmd_blpop
 }
 
 
-def handle_command(command: str, args) -> bytes:
+def handle_command(client_socket: socket, command: str, args: list[str]) -> bytes | RedisResponse:
     func = COMMANDS.get(command.upper())
     if func:
-        return func(args)
+        return func(client_socket, args)
     return f"-ERR unknown command '{command}'\r\n".encode()
 

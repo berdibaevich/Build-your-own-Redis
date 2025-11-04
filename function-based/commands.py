@@ -173,6 +173,19 @@ def cmd_blpop(client: socket, args: list[str]):
         return BLOCKED
     
 
+@does_not_require_client
+def cmd_type(args: list[str]):
+    if not args or len(args) != 1:
+        return b"-ERR wrong number of arguments for 'type' command\r\n"
+    
+    key = args[0]
+    if key in KEY_VALUE:
+        return "+string\r\n".encode()
+    elif key in LIST:
+        return "+list\r\n".encode()
+    else:
+        return "+none\r\n".encode()
+
 
 COMMANDS = {
     "PING": cmd_ping,
@@ -184,7 +197,8 @@ COMMANDS = {
     "LPUSH": cmd_lpush,
     "LLEN": cmd_llen,
     "LPOP": cmd_lpop,
-    "BLPOP": cmd_blpop
+    "BLPOP": cmd_blpop,
+    "TYPE": cmd_type
 }
 
 
